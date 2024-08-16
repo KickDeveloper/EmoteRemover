@@ -1,8 +1,8 @@
 {
     "manifest_version": 3,
-    "name": "PatrickBoo Remover",
+    "name": "Emote Remover",
     "version": "1.0",
-    "description": "Removes all elements containing data-emote-name='PatrickBoo'.",
+    "description": "Removes emotes from chat",
     "permissions": [
       "activeTab",
       "scripting"

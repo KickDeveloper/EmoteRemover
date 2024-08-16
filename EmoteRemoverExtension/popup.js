@@ -1,10 +1,17 @@
-let emoteList = [];
+let emoteList = []; // Initialize as an empty array
 
 // Load the emote list from localStorage when the popup is opened
 document.addEventListener('DOMContentLoaded', () => {
   const storedEmoteList = localStorage.getItem('emoteList');
   if (storedEmoteList) {
-    emoteList = JSON.parse(storedEmoteList);
+    try {
+      emoteList = JSON.parse(storedEmoteList);
+      if (!Array.isArray(emoteList)) {
+        emoteList = []; // Ensure emoteList is an array
+      }
+    } catch (e) {
+      emoteList = []; // In case of error, initialize as an empty array
+    }
     updateEmoteList();
     chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
       chrome.scripting.executeScript({
@@ -19,22 +26,34 @@ document.addEventListener('DOMContentLoaded', () => {
 document.getElementById('addEmote').addEventListener('click', () => {
   const emoteName = document.getElementById('emoteName').value.trim();
   if (emoteName && !emoteList.includes(emoteName)) {
-    emoteList.push(emoteName);
-    saveEmoteList();
-    updateEmoteList();
+    emoteList.push(emoteName); // Add the emote name to the list
+    saveEmoteList(); // Save the updated list
+    updateEmoteList(); // Update the UI with the new list
     chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
       chrome.scripting.executeScript({
         target: { tabId: tabs[0].id },
         function: monitorAndRemoveEmotes,
-        args: [emoteList]
+        args: [emoteList] // Pass the updated emote list
       });
     });
   }
-  document.getElementById('emoteName').value = '';
+  document.getElementById('emoteName').value = ''; // Clear the input field
+});
+
+document.getElementById('removeAllEmotes').addEventListener('click', () => {
+  removeAllEmotes();
+});
+
+document.getElementById('restoreAllEmotes').addEventListener('click', () => {
+  restoreAllEmotes();
+});
+
+document.getElementById('refreshButton').addEventListener('click', () => {
+  refreshEverything();
 });
 
 function saveEmoteList() {
-  localStorage.setItem('emoteList', JSON.stringify(emoteList));
+  localStorage.setItem('emoteList', JSON.stringify(emoteList)); // Save emote list to localStorage
 }
 
 function updateEmoteList() {
@@ -46,7 +65,7 @@ function updateEmoteList() {
     emoteElement.innerHTML = `<span>${emote}</span><span class="remove-link" data-index="${index}">Remove</span>`;
     emoteListDiv.appendChild(emoteElement);
   });
-  addRemoveListeners();
+  addRemoveListeners(); // Add click listeners to remove emotes
 }
 
 function addRemoveListeners() {
@@ -59,16 +78,57 @@ function addRemoveListeners() {
   });
 }
 
+function refreshEverything() {
+  // Clear emoteList, localStorage, and reset the UI
+  emoteList = [];
+  localStorage.clear();
+  updateEmoteList();
+  
+  chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+    chrome.scripting.executeScript({
+      target: { tabId: tabs[0].id },
+      function: stopAllObserversAndAllowNewEntries,
+      args: []
+    });
+  });
+}
+
 function removeEmote(index) {
   const emoteName = emoteList[index];
-  emoteList.splice(index, 1);
-  saveEmoteList();
-  updateEmoteList();
+  emoteList.splice(index, 1); // Remove the emote from the list
+  saveEmoteList(); // Save the updated list
+  updateEmoteList(); // Update the UI
   chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
     chrome.scripting.executeScript({
       target: { tabId: tabs[0].id },
       function: stopMonitoringAndRestoreEmote,
-      args: [emoteName]
+      args: [emoteName] // Pass the emote to restore
+    });
+  });
+}
+
+function removeAllEmotes() {
+  // Monitor and remove all chat entries with emotes
+  chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+    chrome.scripting.executeScript({
+      target: { tabId: tabs[0].id },
+      function: monitorAndRemoveAllChatEntriesWithEmotes,
+      args: []
+    });
+  });
+}
+
+function restoreAllEmotes() {
+  // Clear the emoteList, stop all observers, and allow new elements to display
+  emoteList = [];
+  saveEmoteList();
+  updateEmoteList();
+  
+  chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+    chrome.scripting.executeScript({
+      target: { tabId: tabs[0].id },
+      function: stopAllObserversAndAllowNewEntries,
+      args: []
     });
   });
 }
@@ -127,5 +187,56 @@ function stopMonitoringAndRestoreEmote(emoteName) {
       }
     });
     delete window._removedElements[emoteName];
+  }
+}
+
+function monitorAndRemoveAllChatEntriesWithEmotes() {
+  // Ensure only one observer is set up
+  if (window._allChatEntriesObserver) {
+    window._allChatEntriesObserver.disconnect();
+  }
+
+  window._removedElements = window._removedElements || [];
+
+  function removeChatEntriesWithEmotes() {
+    const chatEntries = document.querySelectorAll('.chat-entry');
+    chatEntries.forEach(entry => {
+      if (entry.querySelector('[data-emote-name]') && !window._removedElements.some(e => e.element === entry)) {
+        window._removedElements.push({
+          element: entry,
+          parent: entry.parentNode,
+          nextSibling: entry.nextSibling
+        });
+        entry.remove();
+      }
+    });
+  }
+
+  // Initial removal of any existing elements
+  removeChatEntriesWithEmotes();
+
+  // Set up a MutationObserver to monitor changes in the DOM
+  window._allChatEntriesObserver = new MutationObserver(() => {
+    removeChatEntriesWithEmotes();
+  });
+
+  // Observe changes to the document body and its descendants
+  window._allChatEntriesObserver.observe(document.body, { childList: true, subtree: true });
+}
+
+function stopAllObserversAndAllowNewEntries() {
+  // Disconnect all observers to stop removing new elements
+  if (window._emoteObservers) {
+    for (const observer in window._emoteObservers) {
+      if (window._emoteObservers[observer]) {
+        window._emoteObservers[observer].disconnect();
+      }
+    }
+    window._emoteObservers = {};
+  }
+
+  if (window._allChatEntriesObserver) {
+    window._allChatEntriesObserver.disconnect();
+    window._allChatEntriesObserver = null;
   }
 }

@@ -8,11 +8,15 @@
     #emoteList { margin-top: 10px; }
     .emote-item { display: flex; justify-content: space-between; margin-bottom: 5px; }
     .remove-link { color: red; cursor: pointer; margin-left: 10px; }
+    .refresh-button { background-color: #f0f0f0; border: 1px solid #ccc; padding: 5px 10px; cursor: pointer; }
   </style>
 </head>
 <body>
   <input id="emoteName" type="text" placeholder="Enter emote name">
   <button id="addEmote">Add Emote to Remove</button>
+  <button id="removeAllEmotes">Remove All Emotes</button>
+  <button id="restoreAllEmotes">Restore All Emotes</button>
+  <button id="refreshButton" class="refresh-button">Refresh</button>
   
   <h3>Emotes to Remove:</h3>
   <div id="emoteList"></div>
