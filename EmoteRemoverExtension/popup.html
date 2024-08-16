@@ -1,0 +1,22 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Emote Remover</title>
+  <style>
+    body { width: 250px; padding: 20px; font-family: Arial, sans-serif; }
+    input, button { width: 100%; padding: 10px; margin-top: 10px; }
+    #emoteList { margin-top: 10px; }
+    .emote-item { display: flex; justify-content: space-between; margin-bottom: 5px; }
+    .remove-link { color: red; cursor: pointer; margin-left: 10px; }
+  </style>
+</head>
+<body>
+  <input id="emoteName" type="text" placeholder="Enter emote name">
+  <button id="addEmote">Add Emote to Remove</button>
+  
+  <h3>Emotes to Remove:</h3>
+  <div id="emoteList"></div>
+
+  <script src="popup.js"></script>
+</body>
+</html>
